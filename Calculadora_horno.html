@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora Horno TT</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #1f2933;
+      color: #e5e7eb;
+      padding: 20px;
+    }
+    .container {
+      max-width: 420px;
+      margin: auto;
+      background: #111827;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    select, input, button {
+      width: 100%;
+      margin-top: 5px;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 1rem;
+    }
+    button {
+      margin-top: 20px;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    .ok { background: #065f46; }
+    .no { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Salida de horno</h1>
+
+    <label>Proceso</label>
+    <select id="proceso">
+      <option value="normalizado">Normalizado</option>
+      <option value="revenido">Revenido</option>
+    </select>
+
+    <label>Velocidad de cadena (Hz)</label>
+    <input type="number" id="velocidad" min="35" max="65" value="60" />
+
+    <label>Diámetro</label>
+    <select id="diametro">
+      <option value="1">1"</option>
+      <option value="0.875">7/8"</option>
+      <option value="0.75">3/4"</option>
+    </select>
+
+    <label>Cantidad de barras a cargar</label>
+    <input type="number" id="cantidad" min="1" value="1" />
+
+    <label>Hora fin de turno</label>
+    <input type="time" id="finTurno" />
+
+    <button onclick="calcular()">Calcular</button>
+
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    function calcular() {
+      const proceso = document.getElementById('proceso').value;
+      const velocidad = parseFloat(document.getElementById('velocidad').value);
+      const diametro = parseFloat(document.getElementById('diametro').value);
+      const cantidad = parseInt(document.getElementById('cantidad').value);
+      const finTurno = document.getElementById('finTurno').value;
+
+      if (!finTurno || velocidad < 35 || velocidad > 65) {
+        alert('Verifique velocidad (35–65 Hz) y hora de fin de turno');
+        return;
+      }
+
+      // Tiempo base interpolado linealmente entre 45 y 60 Hz
+      const tiempo45 = 71 * 60 + 16;
+      const tiempo60 = 54 * 60 + 14;
+
+      const tiempoBase = tiempo45 + (tiempo60 - tiempo45) * ((velocidad - 45) / (60 - 45));
+
+      // Tiempo de carga por barra escalado con la velocidad
+      const tiempoCargaBarra45 = 28.65;
+      const tiempoCargaBarra = tiempoCargaBarra45 * (45 / velocidad);
+
+      let tiempoCargaTotal = 0;
+
+      if (proceso === 'normalizado') {
+        tiempoCargaTotal = cantidad * tiempoCargaBarra;
+      } else {
+        let patron;
+        if (diametro === 1) patron = 3;
+        else if (diametro === 0.875) patron = 4;
+        else patron = 5;
+
+        const grupos = Math.ceil(cantidad / patron);
+        tiempoCargaTotal = grupos * tiempoCargaBarra;
+      }
+
+      const tiempoTotal = tiempoBase + tiempoCargaTotal;
+
+      const ahora = new Date();
+      const salida = new Date(ahora.getTime() + tiempoTotal * 1000);
+
+      const [h, m] = finTurno.split(':').map(Number);
+      const fin = new Date();
+      fin.setHours(h, m, 0, 0);
+
+      const margen = 5 * 60 * 1000;
+      const resultado = document.getElementById('resultado');
+
+      if (salida.getTime() <= fin.getTime() - margen) {
+        resultado.className = 'result ok';
+        resultado.innerText = `SALE \nHora estimada: ${salida.toLocaleTimeString()}`;
+      } else {
+        resultado.className = 'result no';
+        resultado.innerText = `NO SALE \nHora estimada: ${salida.toLocaleTimeString()}`;
+      }
+    }
+  </script>
+</body>
+</html>
